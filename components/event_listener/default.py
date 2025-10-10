@@ -28,10 +28,8 @@ class DefaultEventListener(EventListener):
         async def handler(event_context: context.EventContext):
             # 获取用户消息文本
             message_text = str(event_context.event.message_chain)
-            
             # print(f'event={event_context.event}')
             event_context.prevent_default()
-
             # 如果用户输入包含[Image]标记，剔除它
             if '[Image]' in message_text:
                 message_text = message_text.replace('[Image]', '').strip()
@@ -54,11 +52,40 @@ class DefaultEventListener(EventListener):
             if meme_key is None:
                 meme_key = first_word
             
-            # 如果只有关键词没有文本，确保texts为空列表
-            if len(parts) > 1:
-                texts = [parts[1]]
+            # 初始化texts列表
+            texts = []
+            
+            # 检查meme_key是否存在于memes_info中，以及其是否需要多个文本
+            if meme_key in self.meme_handler.memes_info:
+                meme_info = self.meme_handler.memes_info[meme_key]
+                # 如果有文本内容
+                if len(parts) > 1:
+                    # 默认以逗号分隔多个文本
+                    texts = [t.strip() for t in parts[1].split(',')]
+                    
+                    # 检查文本数量是否符合要求
+                    min_texts = meme_info.get('params_type', {}).get('min_texts', 0)
+                    max_texts = meme_info.get('params_type', {}).get('max_texts', 0)
+                    
+                    # 如果文本数量不足，使用默认文本填充
+                    if len(texts) < min_texts and 'default_texts' in meme_info.get('params_type', {}):
+                        default_texts = meme_info['params_type']['default_texts']
+                        # 只填充需要的数量
+                        texts += default_texts[len(texts):min_texts]
+                    
+                    # 如果文本数量超过最大限制，截断
+                    if max_texts > 0 and len(texts) > max_texts:
+                        texts = texts[:max_texts]
+                else:
+                    # 没有提供文本，检查是否有默认文本
+                    if 'default_texts' in meme_info.get('params_type', {}):
+                        texts = meme_info['params_type']['default_texts']
             else:
-                texts = []
+                # 如果meme_key不在memes_info中，使用原来的处理方式
+                if len(parts) > 1:
+                    texts = [parts[1]]
+                else:
+                    texts = []
             
             # 初始化images列表并从消息链中提取图片的base64数据
             images = []
@@ -87,10 +114,10 @@ class DefaultEventListener(EventListener):
                 except Exception as e:
                     print(f"获取QQ头像时出错：{repr(e)}")
             
-            # print(f'用户输入：{message_text}')
-            # print(f'解析后的关键词：{meme_key}')
-            # print(f'解析后的文本内容：{texts}')
-            # print(f'提取到的图片数量：{len(images)}')
+            print(f'用户输入：{message_text}')
+            print(f'解析后的关键词：{meme_key}')
+            print(f'解析后的文本内容：{texts}')
+            print(f'提取到的图片数量：{len(images)}')
             
             try:
                 # 调用表情包请求处理器生成图片

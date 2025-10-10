@@ -68,19 +68,38 @@ class MemeRequestHandler:
         try:
             # 构建API请求参数 - 符合curl请求示例格式
             # 准备files参数用于文件上传
-            files = {}
-            # 检查是否有图片
-            if images and len(images) > 0:
-                # 创建一个BytesIO对象来模拟文件上传
-                img_file = BytesIO(images[0])
-                # 为图片指定文件名和类型
-                files['images'] = ('image.png', img_file, 'image/png')
+            files = []
+            # 决定是否需要发送图片
+            need_send_images = False
+            if meme_key in self.memes_info:
+                meme_info = self.memes_info[meme_key]
+                min_images = meme_info.get('params_type', {}).get('min_images', 0)
+                max_images = meme_info.get('params_type', {}).get('max_images', 0)
+                
+                # 只有当表情包需要图片时才发送图片
+                need_send_images = min_images > 0 or max_images > 0
+                
+                print(f'meme_key={meme_key}, min_images={min_images}, max_images={max_images}, need_send_images={need_send_images}')
+            
+            # 如果需要发送图片且有图片数据
+            if need_send_images and images:
+                # 处理多个图片，使用列表格式，这是httpx发送多个相同字段名的正确方式
+                for i, img_data in enumerate(images):
+                    # 创建一个BytesIO对象来模拟文件上传
+                    img_file = BytesIO(img_data)
+                    # 使用元组格式添加到files列表
+                    files.append(('images', (f'image_{i}.png', img_file, 'image/png')))
+                print(f'发送图片数量: {len(files)}')
+            else:
+                print(f'不发送图片，need_send_images={need_send_images}, 图片数量={len(images) if images else 0}')
             
             # 准备data参数
             data = {}
-            # 添加texts参数 - 只有当文本不为空时才添加
-            if texts and texts[0]:
-                data['texts'] = texts[0]
+            # 添加texts参数 - 处理多个文本
+            # 从app.py的代码可以看出，FastAPI期望接收的是多个相同名称的texts参数
+            # 在httpx中，当需要发送多个相同名称的表单字段时，应该使用列表格式
+            if texts:
+                data['texts'] = texts
             
             # 添加args参数 - 使用JSON字符串格式
             args = '{"user_infos":[]}'
@@ -90,6 +109,8 @@ class MemeRequestHandler:
             url = f"{self.memeurl}/memes/{meme_key}/"
             # print(f'API请求URL：{url}')
             # print(f'匹配到的关键词：{meme_key}')
+            # print(f'发送的文本数量：{len(texts)}')
+            # print(f'发送的图片数量：{len(images) if images else 0}')
             
             # 设置请求头
             headers = {
@@ -107,13 +128,13 @@ class MemeRequestHandler:
             return resp.content
             
         except httpx.HTTPStatusError as e:
-            return
+            # print(f"生成表情包时出错：HTTP错误 {e.response.status_code}")
+            # print("响应内容：", e.response.text)
             # if e.response.status_code == 404:
             #     raise ValueError(f"未找到表情包：{meme_key}")
             # else:
-            #     print(f"生成表情包时出错：HTTP错误 {e.response.status_code}")
-            #     print("响应内容：", e.response.text)
             #     raise RuntimeError(f"生成表情包时出错：HTTP错误 {e.response.status_code}")
+            return
         except Exception as e:
             # print(f"生成表情包时出错：{str(e)}")
             # raise RuntimeError(f"生成表情包时出错：{str(e)}")
