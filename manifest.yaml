@@ -4,14 +4,14 @@ metadata:
   author: sheetung
   name: meme-plugin-api
   repository: 'https://github.com/sheetung/langbot-plugin-memes-api'
-  version: 0.1.0
+  version: 0.1.3
   description:
-    en_US: meme docker
-    zh_Hans: meme docker
+    en_US: For LangBot meme generator plugin, API version
+    zh_Hans: 用于LangBot表情包制作插件，api 版本
   label:
     en_US: meme-plugin-api
     zh_Hans: meme表情包生成
-  icon: assets/icon.svg
+  icon: assets/icon.png
 spec:
   config:
     - name: memeurl

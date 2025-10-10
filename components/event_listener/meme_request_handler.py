@@ -88,8 +88,8 @@ class MemeRequestHandler:
             
             # 构建API URL
             url = f"{self.memeurl}/memes/{meme_key}/"
-            print(f'API请求URL：{url}')
-            print(f'匹配到的关键词：{meme_key}')
+            # print(f'API请求URL：{url}')
+            # print(f'匹配到的关键词：{meme_key}')
             
             # 设置请求头
             headers = {
@@ -107,12 +107,14 @@ class MemeRequestHandler:
             return resp.content
             
         except httpx.HTTPStatusError as e:
-            if e.response.status_code == 404:
-                raise ValueError(f"未找到表情包：{meme_key}")
-            else:
-                print(f"生成表情包时出错：HTTP错误 {e.response.status_code}")
-                print("响应内容：", e.response.text)
-                raise RuntimeError(f"生成表情包时出错：HTTP错误 {e.response.status_code}")
+            return
+            # if e.response.status_code == 404:
+            #     raise ValueError(f"未找到表情包：{meme_key}")
+            # else:
+            #     print(f"生成表情包时出错：HTTP错误 {e.response.status_code}")
+            #     print("响应内容：", e.response.text)
+            #     raise RuntimeError(f"生成表情包时出错：HTTP错误 {e.response.status_code}")
         except Exception as e:
-            print(f"生成表情包时出错：{str(e)}")
-            raise RuntimeError(f"生成表情包时出错：{str(e)}")
+            # print(f"生成表情包时出错：{str(e)}")
+            # raise RuntimeError(f"生成表情包时出错：{str(e)}")
+            return

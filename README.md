@@ -12,7 +12,7 @@
 
 ### Docker 部署
 
-
+`docker-compose.yml`文件如下
 
 ```yaml
 version: '3.8'
@@ -36,6 +36,8 @@ services:
       - LOG_LEVEL=INFO
 ```
 
+通过命令 `docker-compose up -d` 启动容器
+
 运行后可通过 api 方式调用
 
 #### 环境变量
@@ -56,9 +58,21 @@ services:
 
 在LnagBot市场安装`meme-plugin-api`, 并配置好环境变量
 
+聊天中触发表情列表中的关键词生成表情包
+
+- 例如：
+  - 反了  --> 由QQ头像作为图片传入
+  - 反了 [image] --> 由消息中的图片作为图片传入
+
 ### 表情列表
 
 请参考 [表情列表](https://github.com/MemeCrafters/meme-generator/wiki/%E8%A1%A8%E6%83%85%E5%88%97%E8%A1%A8) 查看所有支持的表情包关键词
+
+## 更新历史
+
+- v0.1.3 增加默认图片使用qq头像
+- v0.1.2 完善基础开发
+
 
 ## 问题反馈及功能开发
 

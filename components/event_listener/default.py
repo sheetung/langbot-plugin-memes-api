@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import httpx
 from langbot_plugin.api.definition.components.common.event_listener import EventListener
 from langbot_plugin.api.entities import events, context
 from langbot_plugin.api.entities.builtin.platform import message as platform_message
@@ -28,6 +29,9 @@ class DefaultEventListener(EventListener):
             # 获取用户消息文本
             message_text = str(event_context.event.message_chain)
             
+            # print(f'event={event_context.event}')
+            event_context.prevent_default()
+
             # 如果用户输入包含[Image]标记，剔除它
             if '[Image]' in message_text:
                 message_text = message_text.replace('[Image]', '').strip()
@@ -68,10 +72,25 @@ class DefaultEventListener(EventListener):
                     img_bytes = base64.b64decode(base64_data)
                     images.append(img_bytes)
             
-            print(f'用户输入：{message_text}')
-            print(f'解析后的关键词：{meme_key}')
-            print(f'解析后的文本内容：{texts}')
-            print(f'提取到的图片数量：{len(images)}')
+            # 如果没有提取到图片，使用发送者的QQ头像
+            if not images and hasattr(event_context.event, 'sender_id'):
+                sender_id = event_context.event.sender_id
+                # print(f'senderid={sender_id}')
+                try:
+                    # 使用QQ官方头像URL获取头像
+                    async with httpx.AsyncClient() as client:
+                        # 使用指定的QQ头像URL格式
+                        img_url = f"http://q1.qlogo.cn/g?b=qq&nk={sender_id}&s=100"
+                        img_resp = await client.get(img_url)
+                        img_resp.raise_for_status()
+                        images.append(img_resp.content)
+                except Exception as e:
+                    print(f"获取QQ头像时出错：{repr(e)}")
+            
+            # print(f'用户输入：{message_text}')
+            # print(f'解析后的关键词：{meme_key}')
+            # print(f'解析后的文本内容：{texts}')
+            # print(f'提取到的图片数量：{len(images)}')
             
             try:
                 # 调用表情包请求处理器生成图片
@@ -102,11 +121,12 @@ class DefaultEventListener(EventListener):
                 )
             except Exception as e:
                 # 处理未知错误
-                await event_context.reply(
-                    platform_message.MessageChain([
-                        platform_message.Plain(text=f"生成表情包时出错：{str(e)}")
-                    ])
-                )
+                # await event_context.reply(
+                #     platform_message.MessageChain([
+                #         platform_message.Plain(text=f"生成表情包时出错：{str(e)}")
+                #     ])
+                # )
+                return
                 
     # 匹配关键词，返回对应的meme key
     def _match_keyword(self, text):
