@@ -7,33 +7,32 @@
 
 ### Docker 部署
 
-`docker-compose.yml`文件如下
+克隆本仓库
 
-```yaml
-version: '3.8'
-
-services:
-  meme-generator:
-    image: meetwq/meme-generator:main
-    container_name: meme-generator
-    restart: always
-    ports:
-      - "2233:2233"
-    volumes:
-      - ./data:/data
-    environment:
-      - MEME_DIRS=["/data/memes"]
-      - MEME_DISABLED_LIST=[]
-      - GIF_MAX_SIZE=10.0
-      - GIF_MAX_FRAMES=100
-      - BAIDU_TRANS_APPID=
-      - BAIDU_TRANS_APIKEY=
-      - LOG_LEVEL=INFO
+```bash
+git clone https://github.com/sheetung/langbot-plugin-memes-api.git
 ```
 
-通过命令 `docker-compose up -d` 启动容器
+进入项目目录
 
-运行后可通过 api 方式调用
+```bash
+cd langbot-plugin-memes-api/docker
+```
+
+通过命令 `docker compose up -d` 启动容器
+
+1. LangBot 通过本地或者非**docker**部署：
+
+运行后可通过 api 方式调用，一般无需修改插件的api url配置，如果docker部署与LangBot不在同一台机器上，需要修改插件的api url配置为docker容器的ip地址，默认端口为2233
+
+插件配置url中填写 `http://localhost:2233` 
+
+2. LangBot 通过docker部署：
+
+需要将LangBot的docker网络与本插件的docker网络连接起来，在`docker-compose.yaml`中添加如下配置：（已默认添加）
+
+插件配置url中填写 `http://meme-generator:2233`
+
 
 #### 环境变量
 
