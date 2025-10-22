@@ -62,6 +62,12 @@ cd langbot-plugin-memes-api/docker
 
 请参考 [表情列表](https://github.com/MemeCrafters/meme-generator/wiki/%E8%A1%A8%E6%83%85%E5%88%97%E8%A1%A8) 查看所有支持的表情包关键词
 
+## 适配平台
+
+|    平台    | 状态 |  备注  |
+| :--------: | :--: | :----: |
+| OneBot V11 |  ✅   | Napcat |
+
 ## 更新历史
 
 - v0.2.4 修复传入文本或者图片的数量导致表情包生成出错的问题

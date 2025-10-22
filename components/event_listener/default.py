@@ -26,8 +26,15 @@ class DefaultEventListener(EventListener):
         
         @self.handler(events.GroupMessageReceived)
         async def handler(event_context: context.EventContext):
-            # 获取用户消息文本
-            message_text = str(event_context.event.message_chain)
+            # 获取用户消息文本，并确保排除AT标记
+            message_parts = []
+            for element in event_context.event.message_chain:
+                # 只保留普通文本部分，排除AT和其他非文本元素
+                if hasattr(element, 'type') and element.type == 'Plain' and hasattr(element, 'text'):
+                    message_parts.append(element.text)
+            
+            # 合并所有普通文本部分
+            message_text = ''.join(message_parts)
             # print(f'event={event_context.event}')
             event_context.prevent_default()
             # 如果用户输入包含[Image]标记，剔除它
@@ -88,31 +95,92 @@ class DefaultEventListener(EventListener):
                     texts = []
             
             # 初始化images列表并从消息链中提取图片的base64数据
-            images = []
-            for element in event_context.event.message_chain:
-                if hasattr(element, 'type') and element.type == 'Image' and hasattr(element, 'base64') and element.base64:
-                    # 如果base64字符串包含前缀（如'data:image/png;base64,'），则移除前缀
-                    base64_data = element.base64
-                    if ',' in base64_data:
-                        base64_data = base64_data.split(',')[1]
-                    # 将base64数据转换为二进制形式
-                    img_bytes = base64.b64decode(base64_data)
-                    images.append(img_bytes)
+            user_images = []  # 用户主动传入的图片
+            at_target_id = None
             
-            # 如果没有提取到图片，使用发送者的QQ头像
-            if not images and hasattr(event_context.event, 'sender_id'):
-                sender_id = event_context.event.sender_id
-                # print(f'senderid={sender_id}')
+            # 先检查消息链中是否有AT标记和用户传入的图片
+            for element in event_context.event.message_chain:
+                if hasattr(element, 'type'):
+                    if element.type == 'At' and hasattr(element, 'target'):
+                        # 记录AT的目标ID
+                        at_target_id = element.target
+                    elif element.type == 'Image' and hasattr(element, 'base64') and element.base64:
+                        # 提取图片的base64数据
+                        base64_data = element.base64
+                        if ',' in base64_data:
+                            base64_data = base64_data.split(',')[1]
+                        img_bytes = base64.b64decode(base64_data)
+                        user_images.append(img_bytes)
+            
+            # 获取表情包信息以确定所需图片数量
+            required_images_count = 0
+            if meme_key in self.meme_handler.memes_info:
+                # 检查表情包是否需要图片，这里假设通过params_type来判断
+                meme_info = self.meme_handler.memes_info[meme_key]
+                # 尝试从表情包信息中获取所需图片数量，如果没有则默认为0
+                required_images_count = meme_info.get('params_type', {}).get('max_images', 0)
+            
+            # 初始化最终的images列表
+            images = []
+            
+            # 根据优先级和所需图片数量构建images列表
+            # 优先级：1. @获取到的id头像 2. 用户主动传入的图片 3. sender_id头像
+            
+            # 首先，获取可能需要的头像（AT目标头像和发送者头像）
+            at_avatar = None
+            sender_avatar = None
+            
+            # 1. 获取AT目标头像（如果有）
+            if at_target_id:
                 try:
-                    # 使用QQ官方头像URL获取头像
                     async with httpx.AsyncClient() as client:
-                        # 使用指定的QQ头像URL格式
-                        img_url = f"http://q1.qlogo.cn/g?b=qq&nk={sender_id}&s=100"
+                        img_url = f"http://q1.qlogo.cn/g?b=qq&nk={at_target_id}&s=100"
                         img_resp = await client.get(img_url)
                         img_resp.raise_for_status()
-                        images.append(img_resp.content)
+                        at_avatar = img_resp.content
                 except Exception as e:
-                    print(f"获取QQ头像时出错：{repr(e)}")
+                    print(f"获取AT目标QQ头像时出错：{repr(e)}")
+            
+            # 2. 获取发送者头像（如果有且与AT目标不同）
+            if hasattr(event_context.event, 'sender_id'):
+                sender_id = event_context.event.sender_id
+                if sender_id != at_target_id:
+                    try:
+                        async with httpx.AsyncClient() as client:
+                            img_url = f"http://q1.qlogo.cn/g?b=qq&nk={sender_id}&s=100"
+                            img_resp = await client.get(img_url)
+                            img_resp.raise_for_status()
+                            sender_avatar = img_resp.content
+                    except Exception as e:
+                        print(f"获取发送者QQ头像时出错：{repr(e)}")
+            
+            # 确定实际需要的图片数量
+            # 如果表情包信息中没有指定最大图片数量，或者指定为0，则允许任意数量
+            if required_images_count <= 0:
+                # 对于需要多张图片的情况，按照优先级和原有逻辑处理
+                # 先添加AT头像（如果有）
+                if at_avatar:
+                    images.append(at_avatar)
+                # 添加用户传入的图片
+                images.extend(user_images)
+                # 如果还需要更多图片，添加发送者头像
+                if sender_avatar and (len(images) == 0 or required_images_count <= 0):
+                    images.append(sender_avatar)
+            else:
+                # 对于只需要一张图片的情况，按照优先级选择一张图片
+                # 1. 优先使用AT头像
+                if at_avatar:
+                    images.append(at_avatar)
+                # 2. 如果没有AT头像，使用用户传入的图片（如果有）
+                elif user_images:
+                    images.append(user_images[0])  # 只取第一张
+                # 3. 最后使用发送者头像
+                elif sender_avatar:
+                    images.append(sender_avatar)
+            
+            # 确保图片数量不超过所需数量
+            if required_images_count > 0:
+                images = images[:required_images_count]
             
             print(f'用户输入：{message_text}')
             print(f'解析后的关键词：{meme_key}')
