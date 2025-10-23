@@ -154,29 +154,60 @@ class DefaultEventListener(EventListener):
                     except Exception as e:
                         print(f"获取发送者QQ头像时出错：{repr(e)}")
             
-            # 确定实际需要的图片数量
-            # 如果表情包信息中没有指定最大图片数量，或者指定为0，则允许任意数量
-            if required_images_count <= 0:
-                # 对于需要多张图片的情况，按照优先级和原有逻辑处理
-                # 先添加AT头像（如果有）
-                if at_avatar:
-                    images.append(at_avatar)
-                # 添加用户传入的图片
-                images.extend(user_images)
-                # 如果还需要更多图片，添加发送者头像
-                if sender_avatar and (len(images) == 0 or required_images_count <= 0):
-                    images.append(sender_avatar)
+            # 获取表情包信息以确定最小和最大图片数量
+            min_images = 0
+            max_images = 0
+            if meme_key in self.meme_handler.memes_info:
+                meme_info = self.meme_handler.memes_info[meme_key]
+                min_images = meme_info.get('params_type', {}).get('min_images', 0)
+                max_images = meme_info.get('params_type', {}).get('max_images', 0)
+                required_images_count = max_images
+            
+            # 特殊处理最小图片数为2的情况
+            if min_images == 2 and max_images == 2:
+                # 情况1：用户提供了两张图，按照顺序传入
+                if len(user_images) >= 2:
+                    images = user_images[:2]
+                # 情况2：用户提供了一张图，则sender_id的头像为图1，用户提供的为图2
+                elif len(user_images) == 1 and sender_avatar:
+                    images = [sender_avatar, user_images[0]]
+                # 情况3：存在At，那么sender_id头像为图1，At头像为图2
+                elif at_avatar and sender_avatar:
+                    images = [sender_avatar, at_avatar]
+                # 其他情况：尽量满足两张图片的需求
+                else:
+                    # 先添加发送者头像（如果有）
+                    if sender_avatar:
+                        images.append(sender_avatar)
+                    # 添加用户传入的图片
+                    images.extend(user_images[:1])  # 只取第一张
+                    # 如果还不够两张，尝试添加AT头像
+                    if len(images) < 2 and at_avatar:
+                        images.append(at_avatar)
             else:
-                # 对于只需要一张图片的情况，按照优先级选择一张图片
-                # 1. 优先使用AT头像
-                if at_avatar:
-                    images.append(at_avatar)
-                # 2. 如果没有AT头像，使用用户传入的图片（如果有）
-                elif user_images:
-                    images.append(user_images[0])  # 只取第一张
-                # 3. 最后使用发送者头像
-                elif sender_avatar:
-                    images.append(sender_avatar)
+                # 原来的逻辑处理其他情况
+                # 如果表情包信息中没有指定最大图片数量，或者指定为0，则允许任意数量
+                if required_images_count <= 0:
+                    # 对于需要多张图片的情况，按照优先级和原有逻辑处理
+                    # 先添加AT头像（如果有）
+                    if at_avatar:
+                        images.append(at_avatar)
+                    # 添加用户传入的图片
+                    images.extend(user_images)
+                    # 如果还需要更多图片，添加发送者头像
+                    if sender_avatar and (len(images) == 0 or required_images_count <= 0):
+                        images.append(sender_avatar)
+                else:
+                    # 对于只需要一张图片的情况，按照优先级选择一张图片
+                    # 1. 优先使用AT头像
+                    if at_avatar:
+                        images.append(at_avatar)
+                    # 2. 如果没有AT头像，使用用户传入的图片（如果有）
+                    elif user_images:
+                        images.append(user_images[0])  # 只取第一张
+                    # 3. 最后使用发送者头像
+                    elif sender_avatar:
+                        images.append(sender_avatar)
             
             # 确保图片数量不超过所需数量
             if required_images_count > 0:

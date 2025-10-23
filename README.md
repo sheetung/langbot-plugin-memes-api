@@ -10,13 +10,13 @@
 克隆本仓库
 
 ```bash
-git clone https://github.com/sheetung/langbot-plugin-memes-api.git
+git clone https://github.com/sheetung/meme-generator-extra-docker.git
 ```
 
 进入项目目录
 
 ```bash
-cd langbot-plugin-memes-api/docker
+cd memegeneratorextradocker
 ```
 
 通过命令 `docker compose up -d` 启动容器
@@ -70,6 +70,7 @@ cd langbot-plugin-memes-api/docker
 
 ## 更新历史
 
+- v0.5.8 完善图片传入逻辑并简化插件体积
 - v0.2.4 修复传入文本或者图片的数量导致表情包生成出错的问题
 - v0.1.3 增加默认图片使用qq头像
 - v0.1.2 完善基础开发
